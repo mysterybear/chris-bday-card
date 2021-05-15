@@ -41,8 +41,9 @@ const Threes = () => {
 const App = () => {
   return (
     <Fragment>
-      <Threes />
+      {/* <Threes /> */}
       <Svg url="./3.svg" />
+      <Svg url="./0.svg" position-x={0.5} position-y={0.5} />
     </Fragment>
   )
 }

@@ -9,7 +9,7 @@ extend({ OrbitControls })
 ReactDOM.render(
   <React.StrictMode>
     <div className="container">
-      <Canvas>
+      <Canvas camera={{ position: [0, 0, 10] }}>
         <App />
         <OrbitControls />
       </Canvas>
