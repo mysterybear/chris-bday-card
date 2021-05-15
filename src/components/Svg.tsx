@@ -1,9 +1,12 @@
 import { InstancedMeshProps, useLoader } from "@react-three/fiber"
-import { map, range } from "fp-ts/lib/Array"
+import { flatten, map, range } from "fp-ts/lib/Array"
 import { pipe } from "fp-ts/lib/function"
+import { collect, keys, map as omap, toArray } from "fp-ts/lib/Record"
 import React, { Suspense, useLayoutEffect, useMemo, useRef } from "react"
 import * as THREE from "three"
 import { SVGLoader } from "three-stdlib"
+import colors from "tailwindcss/colors"
+import { TailwindColorGroup } from "tailwindcss/tailwind-config"
 
 const { sqrt, floor, random } = Math
 
@@ -37,15 +40,25 @@ const SvgBase = ({ url, ...props }: Props) => {
       map(([x, y]) => [x + random() * 0.3, y + random() * 0.3])
     )
     const color = new THREE.Color()
-    const blossomPalette = [0xf20587, 0xf2d479, 0xf2c879, 0xf2b077, 0xf24405]
+    const palette = pipe(
+      colors,
+      keys,
+      map((k) =>
+        typeof colors[k] === "string"
+          ? colors[k]
+          : pipe(
+              toArray(colors[k] as TailwindColorGroup),
+              map(([k, v]) => v)
+            )
+      )
+    ).flat() as string[]
 
     positions.forEach(([x, y], i) => {
       transform.setPosition(x, y, 0)
       ref.current?.setMatrixAt(i, transform)
 
-      color.setHex(
-        blossomPalette[Math.floor(Math.random() * blossomPalette.length)]
-      )
+      color.setStyle(palette[Math.floor(Math.random() * palette.length)])
+      color.convertGammaToLinear(2)
       ref.current?.setColorAt(i, color)
     })
   }, [halfLen, len])
