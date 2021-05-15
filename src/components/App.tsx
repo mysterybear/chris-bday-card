@@ -1,8 +1,8 @@
+import { map, range } from "fp-ts/Array"
+import { pipe } from "fp-ts/function"
 import { Fragment, useLayoutEffect, useMemo, useRef } from "react"
 import * as THREE from "three"
-import { pipe } from "fp-ts/function"
-import { range, map, filter } from "fp-ts/Array"
-import { makeNoise2D } from "fast-simplex-noise"
+import Svg from "./Svg"
 
 const { floor, sqrt, random } = Math
 
@@ -42,6 +42,7 @@ const App = () => {
   return (
     <Fragment>
       <Threes />
+      <Svg url="./3.svg" />
     </Fragment>
   )
 }
