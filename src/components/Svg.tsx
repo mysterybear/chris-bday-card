@@ -1,36 +1,38 @@
 import { InstancedMeshProps, useLoader } from "@react-three/fiber"
-import { flatten, map, range } from "fp-ts/lib/Array"
+import { filter, map, range } from "fp-ts/lib/Array"
 import { pipe } from "fp-ts/lib/function"
-import { collect, keys, map as omap, toArray } from "fp-ts/lib/Record"
+import { keys, toArray } from "fp-ts/lib/Record"
 import React, { Suspense, useLayoutEffect, useMemo, useRef } from "react"
-import * as THREE from "three"
-import { SVGLoader } from "three-stdlib"
 import colors from "tailwindcss/colors"
 import { TailwindColorGroup } from "tailwindcss/tailwind-config"
+import * as THREE from "three"
+import { SVGLoader } from "three-stdlib"
 
-const { sqrt, floor, random } = Math
+const { sqrt, floor, random, PI } = Math
 
-type Props = InstancedMeshProps & { url: string }
+type Props = InstancedMeshProps & {
+  url: string
+  filterer: (i: number) => boolean
+}
 
-const SvgBase = ({ url, ...props }: Props) => {
+const SvgBase = ({ url, filterer, ...props }: Props) => {
   const { paths } = useLoader(SVGLoader, url)
 
   const shapeGeom = useMemo(() => {
     const shapes = paths.flatMap((p) => p.toShapes(true))
     const geom = new THREE.ShapeBufferGeometry(shapes)
-    const scale = 0.013
+    const scale = 0.05
     geom.scale(scale, scale, 0)
     return geom
   }, [paths])
 
   const ref = useRef<THREE.InstancedMesh>()
 
-  const n = 666
+  const n = 10000
   const len = sqrt(n)
   const halfLen = len / 2
 
   useLayoutEffect(() => {
-    const transform = new THREE.Matrix4()
     const positions = pipe(
       range(0, n),
       map((i) => [
@@ -39,43 +41,63 @@ const SvgBase = ({ url, ...props }: Props) => {
       ]),
       map(([x, y]) => [x + random() * 0.3, y + random() * 0.3])
     )
+
     const color = new THREE.Color()
     const palette = pipe(
       colors,
       keys,
+      filter((k) => !["black", "white"].includes(k)),
       map((k) =>
         typeof colors[k] === "string"
           ? colors[k]
           : pipe(
               toArray(colors[k] as TailwindColorGroup),
+              filter(
+                ([k, v]) => !["50", "100", "200", "800", "900"].includes(k)
+              ),
               map(([k, v]) => v)
             )
       )
     ).flat() as string[]
 
+    const transform = new THREE.Matrix4()
+
     positions.forEach(([x, y], i) => {
-      transform.setPosition(x, y, 0)
-      ref.current?.setMatrixAt(i, transform)
+      if (!filterer(i)) {
+        transform.makeScale(0, 0, 0)
+      } else {
+        const rotation = PI * 10 * random()
+        const scaleFactor = 5
+        const scale = 1 + (scaleFactor * random() - scaleFactor)
+        const r = new THREE.Quaternion()
+        r.setFromAxisAngle(
+          new THREE.Vector3(random() * 0.3, random() * 0.5, 1 - random()),
+          rotation
+        )
+        const t = new THREE.Vector3(x, y, random() * x - y)
+        const s = new THREE.Vector3(scale, scale, 1)
+        transform.compose(t, r, s)
 
-      color.setStyle(palette[Math.floor(Math.random() * palette.length)])
-      color.convertGammaToLinear(2)
-      ref.current?.setColorAt(i, color)
+        // transform.makeScale(scale, scale, 0)
+        // transform.setPosition(x, y, 0)
+        // transform.makeRotationZ(rotateFactor * random() - rotateFactor)
+        ref.current?.setMatrixAt(i, transform)
+
+        color.setStyle(palette[floor(random() * palette.length)])
+        color.convertGammaToLinear(2.5)
+        ref.current?.setColorAt(i, color)
+      }
     })
-  }, [halfLen, len])
+  }, [filterer, halfLen, len])
 
-  // const [shape] = shapes
-  // const ref = useRef()
-  // useLayoutEffect(() => {
-  //   const sphere = new THREE.Box3()
-  //     .setFromObject(ref.current)
-  //     .getBoundingSphere(new THREE.Sphere())
-  //   ref.current.position.set(-sphere.center.x, -sphere.center.y, 0)
-  // }, [])
+  const material = useMemo(() => new THREE.MeshBasicMaterial(), [])
+  material.side = THREE.DoubleSide
 
   return (
     <instancedMesh
       ref={ref}
       args={[shapeGeom, undefined as any, n]}
+      material={material}
       {...props}
     />
   )
